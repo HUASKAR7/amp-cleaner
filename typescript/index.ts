@@ -2,7 +2,7 @@ import fs from "fs";
 import { join } from "path";
 import valid from "amphtml-validator";
 import optimizer from "@ampproject/toolbox-optimizer";
-const html = fs.readFileSync(join(__dirname + "/test.html"), "utf-8");
+const html = fs.readFileSync(join(process.cwd() + "/test.html"), "utf-8");
 console.log(html);
 const ampOptimizer = optimizer.create();
 
