@@ -4,6 +4,7 @@ import valid from "amphtml-validator";
 import optimizer from "@ampproject/toolbox-optimizer";
 import cheerio from "cheerio";
 import express from "express";
+import axios from "axios";
 
 const app = express();
 const html = fs.readFileSync(join(process.cwd() + "/test.html"), "utf-8");
@@ -12,9 +13,8 @@ const ampOptimizer = optimizer.create();
 // const main = async () => {
 app.get("/", async (req, res) => {
   // optimizando
-  const opti = await ampOptimizer.transformHtml(html);
   // purgando
-  const $ = cheerio.load(opti);
+  const $ = cheerio.load(html);
   $("base").remove();
   // $("link").each((i, e) => {
   //   $(e).remove();
@@ -28,8 +28,20 @@ app.get("/", async (req, res) => {
   $("a").each((i, e) => {
     $(e).removeAttr("routerlink");
   });
+
+  const cssUri = $("link[rel$='stylesheet']").attr("href");
+  const css = (await axios.get(`https://tftpedia.com/${cssUri}`)).data;
+  $("link[rel$='stylesheet']").remove();
+
+  $("head").append(`<style amp-custom>${css}</style>`);
+
   $("style").each((i, e) => {
-    console.log($(e).html());
+    console.log(e.attribs);
+    if ((e.attribs = {})) {
+      $(e).remove();
+    }
+    // const cssExtra = $(e).remove();
+    // console.log(cssExtra);
   });
 
   $("*").each((i, e) => {
@@ -59,10 +71,19 @@ app.get("/", async (req, res) => {
     e.tagName = "div";
   });
 
+  const opti = await ampOptimizer.transformHtml($.html());
+
   // validando!
-  // console.log($.html());
+
+  validarAMP(opti);
+
+  res.send(opti);
+});
+// main();
+
+const validarAMP = (html) => {
   valid.getInstance().then(function (validator) {
-    var result = validator.validateString($.html());
+    var result = validator.validateString(html);
     (result.status === "PASS" ? console.log : console.error)(result.status);
     for (var ii = 0; ii < result.errors.length; ii++) {
       var error = result.errors[ii];
@@ -74,8 +95,6 @@ app.get("/", async (req, res) => {
       (error.severity === "ERROR" ? console.error : console.warn)(msg);
     }
   });
+};
 
-  res.send($.html());
-});
-// main();
 app.listen(4200);
